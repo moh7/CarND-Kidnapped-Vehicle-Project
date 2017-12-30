@@ -90,30 +90,29 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to
 	//   implement this method and use it as a helper during the updateWeights phase.
 
-  for (unsigned int i = 0; i < observations.size(); i++) { // for each observation
+  for (int i = 0; i < observations.size(); i++) {
 
     // Initialize minimum distance to a very large number.
     double min_distance = 10000000.0;
 
     // Initialize the found map in something not possible.
-    int mapId = -1;
+    int map_ID = -1;
 
-    for (unsigned j = 0; j < predicted.size(); j++) { // for each prediction
+    for (j = 0; j < predicted.size(); j++) {
 
       double x_distance = observations[i].x - predicted[j].x;
       double y_distance = observations[i].y - predicted[j].y;
 
       double distance = x_distance * x_distance + y_distance * y_distance;
 
-      // If the "distance" is less than min, stored the id and update min.
       if (distance < min_distance) {
         min_distance = distance;
-        mapId = predicted[j].id;
+        map_ID = predicted[j].id;
       }
     }
 
-    // Update the observation identifier.
-    observations[i].id = mapId;
+    // Update the observation id.
+    observations[i].id = map_ID;
   }
 }
 
@@ -131,9 +130,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   http://planning.cs.uiuc.edu/node99.html
 
 	// transform to map x coordinate
-  double stdLandmarkRange = std_landmark[0];
-  double stdLandmarkBearing = std_landmark[1];
-  double sum_w = 0;
+
+  double sum_weights = 0; // sum of all particles weights
 
   for (int i = 0; i < num_particles; i++) {
 
@@ -141,72 +139,74 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     double y = particles[i].y;
     double theta = particles[i].theta;
 
-    // Find landmarks in particle's range.
+    // Find what landmarks are in particle's measurement range.
     double sensor_range_2 = sensor_range * sensor_range;
-    vector<LandmarkObs> inRangeLandmarks;
-    for (int j = 0; j < map_landmarks.landmark_list.size(); j++) {
-        float landmarkX = map_landmarks.landmark_list[j].x_f;
-        float landmarkY = map_landmarks.landmark_list[j].y_f;
-        int id = map_landmarks.landmark_list[j].id_i;
-        double dX = x - landmarkX;
-        double dY = y - landmarkY;
+    vector<LandmarkObs> in_range_landmarks;
 
-        if (dX*dX + dY*dY <= sensor_range_2) {
-        inRangeLandmarks.push_back(LandmarkObs{id, landmarkX, landmarkY});
+    for (int j = 0; j < map_landmarks.landmark_list.size(); j++) {
+
+        float landmark_x = map_landmarks.landmark_list[j].x_f;
+        float landmark_y = map_landmarks.landmark_list[j].y_f;
+        int id = map_landmarks.landmark_list[j].id_i;
+        double d_x = x - landmark_x;
+        double d_y = y - landmark_y;
+
+        if (d_x * d_x + d_y * d_y <= sensor_range_2) {
+        in_range_landmarks.push_back(LandmarkObs{id, landmark_x, landmark_y});
         }
     }
 
-    // Transform observation coordinates.
-    vector<LandmarkObs> mappedObservations;
+    // Transform observations from car coordinate to map coordinate.
+    vector<LandmarkObs> transformed_observations;
     for(int j = 0; j < observations.size(); j++) {
         double xx = cos(theta)*observations[j].x - sin(theta)*observations[j].y + x;
         double yy = sin(theta)*observations[j].x + cos(theta)*observations[j].y + y;
-        mappedObservations.push_back(LandmarkObs{observations[j].id, xx, yy});
+        transformed_observations.push_back(LandmarkObs{observations[j].id, xx, yy});
     }
 
-    // Observation association to landmark.
-    dataAssociation(inRangeLandmarks, mappedObservations);
+    // Associate observations to landmarks.
+    dataAssociation(in_range_landmarks, transformed_observations);
 
-    // Reseting weight.
+    // Reset weights.
     particles[i].weight = 1.0;
-    // Calculate weights.
-    for(int j = 0; j < mappedObservations.size(); j++) {
-      double observationX = mappedObservations[j].x;
-      double observationY = mappedObservations[j].y;
-      int landmarkId = mappedObservations[j].id;
 
-      double landmarkX, landmarkY;
+    for(int j = 0; j < transformed_observations.size(); j++) {
+
+      double observation_x = transformed_observations[j].x;
+      double observation_y = transformed_observations[j].y;
+      int landmark_id = transformed_observations[j].id;
+
+      // find landmark corresponding to the measurement.
+      double lm_x, lm_y;
       int k = 0;
-      bool found = false;
-      while(!found && k < inRangeLandmarks.size()) {
-        if (inRangeLandmarks[k].id == landmarkId) {
-          found = true;
-          landmarkX = inRangeLandmarks[k].x;
-          landmarkY = inRangeLandmarks[k].y;
-        }
-        k++;
+      bool found_landmark = false;
+
+      while(!found_landmark && k < in_range_landmarks.size()) {
+            if (in_range_landmarks[k].id == landmark_id) {
+                found_landmark = true;
+                lm_x = in_range_landmarks[k].x;
+                lm_y = in_range_landmarks[k].y;
+            }
+            k++;
       }
 
       // Calculating weight.
-      double dX = observationX - landmarkX;
-      double dY = observationY - landmarkY;
+      double dx = observation_x - lm_x;
+      double dy = observation_y - lm_y;
 
-      double weight = ( 1/(2*M_PI*stdLandmarkRange*stdLandmarkBearing)) * exp( -( dX*dX/(2*stdLandmarkRange*stdLandmarkRange) + (dY*dY/(2*stdLandmarkBearing*stdLandmarkBearing)) ) );
-      if (weight == 0) {
-        particles[i].weight *= EPS;
-        sum_w += particles[i].weight;
+      double std_range = std_landmark[0]; // standard deviation of landmark range
+      double std_bearing = std_landmark[1]; // standard deviation of landmark bearing
 
-      } else {
-        particles[i].weight *= weight;
-        sum_w += particles[i].weight;
+      double weight = (1/(2 * M_PI * std_range * std_bearing)) * exp(-(dx * dx/(2 * std_range * std_range) + (dy * dy / (2 * std_bearing * std_bearing))));
 
+      particles[i].weight *= weight;
+      sum_weights += particles[i].weight;
       }
-    }
   }
-  	// Weights normalization to sum(weights)=1
-	for (int i = 0; i < num_particles; i++){
-		particles[i].weight /= sum_w;
-	}
+    // Weights normalization to sum(weights)=1
+  for (int i = 0; i < num_particles; i++){
+    particles[i].weight /= sum_weights;
+  }
 }
 
 void ParticleFilter::resample() {
@@ -214,20 +214,25 @@ void ParticleFilter::resample() {
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 
-    vector<double> weights;
+    vector<double> weights; // create a vector of weights.
     for(int i = 0; i < num_particles; i++) {
         weights.push_back(particles[i].weight);
     }
 
+    /*define a random number distribution that produces integer values according to a discrete distribution,
+     where possible values have predefined probability equal to normalized weights */
     static default_random_engine gen;
     gen.seed(123);
-    discrete_distribution<> dist_particles(weights.begin(), weights.end());
-    vector<Particle> new_particles;
-    new_particles.resize(num_particles);
+    //discrete_distribution<double> dist_weights(weights.begin(), weights.end());
+    discrete_distribution<double> dist_weights(weights);
+
+    vector<Particle> resampled_particles;
+    resampled_particles.resize(num_particles);
+
     for (int i = 0; i < num_particles; i++) {
-        new_particles[i] = particles[dist_particles(gen)];
+        resampled_particles[i] = particles[dist_weights(gen)];
     }
-    particles = new_particles;
+    particles = resampled_particles;
 
 }
 
