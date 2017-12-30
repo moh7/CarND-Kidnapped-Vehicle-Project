@@ -1,0 +1,17 @@
+In Windows:
+
+git add .
+git commit -m "Initial values were adjusted."
+git push -u origin master
+
+
+
+In linux:
+
+
+cd ~/
+cd CarND-Unscented-Kalman-Filter-Project
+git pull origin master
+cd build
+cmake .. & make
+./UnscentedKF
