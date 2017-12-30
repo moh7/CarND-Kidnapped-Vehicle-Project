@@ -16,6 +16,8 @@
 #include <iterator>
 
 #include "particle_filter.h"
+#define EPS 0.00001
+
 
 using namespace std;
 
@@ -33,7 +35,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 
     default_random_engine gen; // "gen" is the random engine initialized earlier.
 
-    for (int p = 0; p < num_particles, p++){
+    for (int p = 0; p < num_particles; p++){
 
            particles.push_back(Particle);
 
@@ -45,7 +47,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
            particles[p].weight = 1;
 
     }
-    is_initialized = True;
+    is_initialized = true;
 }
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
@@ -62,11 +64,11 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	normal_distribution<double> dist_y(0.0, std_pos[1]);
 	normal_distribution<double> dist_theta(0.0, std_pos[2]);
 
-	for (int p = 0; p < num_particles, p++){
+	for (int p = 0; p < num_particles; p++){
 
         if (fabs(yaw_rate) < EPS){
-            particles[p].x += vel_dt * cos(particles[i].theta);
-            particles[p].y += vel_dt * sin(particles[i].theta);
+            particles[p].x += vel_dt * cos(particles[p].theta);
+            particles[p].y += vel_dt * sin(particles[p].theta);
         // particles[i].theta unchanged if yaw_rate is too small
         }
         else{
