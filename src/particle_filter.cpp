@@ -223,7 +223,7 @@ void ParticleFilter::resample() {
      where possible values have predefined probability equal to normalized weights */
     static default_random_engine gen;
     gen.seed(123);
-    discrete_distribution<double> dist_weights(weights.begin(), weights.end());
+    discrete_distribution<> dist_weights(weights.begin(), weights.end());
 
     vector<Particle> resampled_particles;
     resampled_particles.resize(num_particles);
