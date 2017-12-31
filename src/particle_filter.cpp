@@ -129,9 +129,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
 
-	// transform to map x coordinate
-
-  double sum_weights = 0; // sum of all particles weights
 
   for (int i = 0; i < num_particles; i++) {
 
@@ -203,10 +200,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       sum_weights += particles[i].weight;
       }
   }
-    // Weights normalization to sum(weights)=1
-  for (int i = 0; i < num_particles; i++){
-    particles[i].weight /= sum_weights;
-  }
+
 }
 
 void ParticleFilter::resample() {
